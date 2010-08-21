@@ -15,6 +15,14 @@ background: #000;
 <script>
 
 
+// Array Remove - By John Resig (MIT Licensed)
+Array.prototype.remove = function(from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
+
+// some constants
 var KEY = { SHIFT:16, CTRL:17, ESC:27, RIGHT:39, UP:38, LEFT:37, DOWN:40, SPACE:32,
             A:65, E:69, L:76, P:80, R:82, Z:90 };
 var RAD = Math.PI/180.0;
@@ -167,16 +175,6 @@ function extend(subc, superc, overrides)
   }
 })();
 
-var canvas;
-var ctx;
-var stars = [];
-var CENTER_X;
-var CENTER_Y; 
-var WIDTH = 600;
-var HEIGHT = 600;
-var PLAYER_RADIUS = 20;
-var player;
-
 (function()
 {
   Star = function(x,y) {
@@ -235,20 +233,10 @@ var MAX_STARS = 25;
 
 (function()
 {
-  Player = function() {
+  MovingObj = function() {
     return this;
   };
-  Player.prototype = {
-    init: function() {
-      this.x = CENTER_X;
-      this.y = CENTER_Y;
-      this.prevx = this.x;
-      this.prevy = this.y;
-      this.velocity = this.new_velocity = 0.0;
-      this.inc_velocity = 1.0;
-      this.max_velocity = 7.0;
-      this.init_heading = this.rotation = this.heading = 0.0;
-    },
+  MovingObj.prototype = {
     calc_vector_output: function(x, y, heading, vel) {
       
       x_dist = Math.cos(heading) * vel;
@@ -298,47 +286,66 @@ var MAX_STARS = 25;
         
         this.heading = this.calc_new_heading(this.velocity, this.heading, this.new_velocity, this.rotation);        
         this.heading = this.heading % TWOPI;
-        console.log("curr:" + this.velocity + " new:" + this.new_velocity + " inc:" + 
-          this.inc_velocity + " old heading:" + old_heading + " rotation:" + this.rotation + 
-          "new heading: " + this.heading + " angle diff:" + angle);
+        //console.log("curr:" + this.velocity + " new:" + this.new_velocity + " inc:" + 
+        //  this.inc_velocity + " old heading:" + old_heading + " rotation:" + this.rotation + 
+        //  "new heading: " + this.heading + " angle diff:" + angle);
         
         this.velocity = this.sum_forces(this.velocity, this.new_velocity, angle);
-        console.log("sum of forces: " + this.velocity);
+        //console.log("sum of forces: " + this.velocity);
         
         // limit velocity
         if (this.velocity > this.max_velocity) {
           this.velocity = this.max_velocity;
         }
         
-        console.log(this.velocity + " " + this.inc_velocity);
+        //console.log(this.velocity + " " + this.inc_velocity);
         this.new_velocity = 0;
       }
       
       // check for position out of bounds
-      min_reset_dimension = 0 - PLAYER_RADIUS;
-      max_x_reset_dimension = WIDTH + PLAYER_RADIUS;
-      max_y_reset_dimension = HEIGHT + PLAYER_RADIUS;
+      max_x_reset_dimension = WIDTH + this.obj_radius;
+      max_y_reset_dimension = HEIGHT + this.obj_radius;
       //console.log('x:'+this.x + 'y:'+this.y);
       this.x = (this.x + max_x_reset_dimension) % max_x_reset_dimension;
       this.y = (this.y + max_y_reset_dimension) % max_y_reset_dimension;
-      
+    }
+  };
+})();
+
+(function()
+{
+  Player = function() {
+    return this;
+  };
+  extend(Player, MovingObj, {
+    init: function() {
+      this.x = CENTER_X;
+      this.y = CENTER_Y;
+      this.prevx = this.x;
+      this.prevy = this.y;
+      this.velocity = this.new_velocity = 0.0;
+      this.inc_velocity = 1.0;
+      this.max_velocity = 7.0;
+      this.obj_radius = 10;
+      this.init_heading = this.rotation = this.heading = 0.0;
     },
+    
     render: function() {
       //console.log("render!");
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(this.rotation);
       ctx.beginPath();  
-      ctx.fillStyle = "rgb(255,255,255)";
-      ctx.moveTo(10, 0);
-      ctx.lineTo(-7, -6);
-      ctx.lineTo(-3, 0);
-      ctx.lineTo(-7, 6);
+      ctx.fillStyle = "rgb(255,255,255)";      
+      ctx.moveTo(10, 0);      
+      ctx.lineTo(-7, -6);      
+      ctx.lineTo(-3, 0);      
+      ctx.lineTo(-7, 6);      
       ctx.fill();
       ctx.restore();
     },
-    onKeyHandler: function(keyCode)
-    {
+    
+    onKeyHandler: function(keyCode) {
       switch (keyCode)
       {
         case KEY.LEFT:
@@ -359,11 +366,61 @@ var MAX_STARS = 25;
           }
           break;
         }
+        case KEY.SPACE:
+        {	
+          b = new Bullet()
+          b.init(this.x, this.y, this.rotation);
+          bullets.push(b);
+          break;
+        }
       }
       tick();
     }
-  };
+  });
 })();
+
+(function()
+{
+  Bullet = function() {
+    return this;
+  };
+  extend(Bullet, MovingObj, {
+    init: function(x, y, heading) {
+      this.x = x;
+      this.y = y;
+      this.prevx = this.x;
+      this.prevy = this.y;
+      this.velocity = this.new_velocity = 4.0;
+      this.inc_velocity = 0.0;
+      this.max_velocity = 4.0;
+      this.lifespan = 60;
+      this.obj_radius = 2;
+      this.init_heading = this.rotation = this.heading = heading;
+    },
+    
+    render: function() {
+      ctx.save();
+      //console.log(this.x, this.y, this.obj_radius);
+      ctx.fillStyle = "rgb(255,255,255)";  
+      ctx.beginPath();  
+      ctx.arc(this.x, this.y, this.obj_radius, 0, TWOPI, true);
+      ctx.fill();
+      //ctx.beginPath(); ctx.fillStyle = "rgb(255,0,0)";  ctx.arc(300,200,60,0,TWOPI, true);  ctx.fill();
+      ctx.restore();
+    }
+  });
+})();
+
+var canvas;
+var ctx;
+var stars = [];
+var bullets = [];
+var CENTER_X;
+var CENTER_Y; 
+var WIDTH = 600;
+var HEIGHT = 600;
+var PLAYER_RADIUS = 20;
+var player;
 
 function updateStarfield() {
   while (stars.length < MAX_STARS) {
@@ -405,6 +462,20 @@ function tick() {
   
   player.update();
   player.render();
+   
+  //console.log(bullets);
+  jQuery(bullets).each(function(i, bullet) {
+    if (typeof(bullet) != 'undefined') {
+      if (bullet.lifespan == 0) {
+        bullets.remove(i);
+      } else {
+        bullet.lifespan--;
+        bullets[i] = bullet;
+      }
+      bullet.update();
+      bullet.render();
+    }
+  });
 
   //updateStarfield();
 }
@@ -448,11 +519,12 @@ function init() {
     setInterval("console.log('tick!');", 3000);
     i++;
   }*/
+  
   g_interval = setInterval("tick();", 10);
 }
 
 // testing
-testing = true;
+testing = false;
 if (testing) {
   p = new Player();
   p.init();
