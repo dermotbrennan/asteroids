@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+
+#canvas {
+border: 2px solid #aaaaaa;
+background: #000;
+}
+
+</style>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js" language="javascript" type="text/javascript"></script> 
+<script>
+
+
+var KEY = { SHIFT:16, CTRL:17, ESC:27, RIGHT:39, UP:38, LEFT:37, DOWN:40, SPACE:32,
+            A:65, E:69, L:76, P:80, R:82, Z:90 };
+var RAD = Math.PI/180.0;
+var TWOPI = Math.PI*2;
+
+/**
+ * Utility to set up the prototype, constructor and superclass properties to
+ * support an inheritance strategy that can chain constructors and methods.
+ * Static members will not be inherited.
+ * 
+ * @method extend
+ * @static
+ * @param {Function} subc   the object to modify
+ * @param {Function} superc the object to inherit
+ * @param {Object} overrides  additional properties/methods to add to the
+ *                            subclass prototype.  These will override the
+ *                            matching items obtained from the superclass.
+ */
+function extend(subc, superc, overrides)
+{
+   var F = function() {}, i;
+   F.prototype = superc.prototype;
+   subc.prototype = new F();
+   subc.prototype.constructor = subc;
+   subc.superclass = superc.prototype;
+   if (superc.prototype.constructor == Object.prototype.constructor)
+   {
+      superc.prototype.constructor = superc;
+   }
+   
+   if (overrides)
+   {
+      for (i in overrides)
+      {
+         if (overrides.hasOwnProperty(i))
+         {
+            subc.prototype[i] = overrides[i];
+         }
+      }
+   }
+}
+
+(function() {
+  Vector = function(x,y) {
+    this.x = x;
+    this.y = y;
+    
+    return this;
+  }
+  
+  Vector.prototype = {
+    x: 0,
+    y: 0,
+    clone: function()
+    {
+       return new Vector(this.x, this.y);
+    },
+    
+    set: function(v)
+    {
+       this.x = v.x;
+       this.y = v.y;
+       return this;
+    },
+    
+    add: function(v)
+    {
+       this.x += v.x;
+       this.y += v.y;
+       return this;
+    },
+    
+    sub: function(v)
+    {
+       this.x -= v.x;
+       this.y -= v.y;
+       return this;
+    },
+    
+    dot: function(v)
+    {
+       return this.x * v.x + this.y * v.y;
+    },
+    
+    length: function()
+    {
+       return Math.sqrt(this.x * this.x + this.y * this.y); 
+    },
+    
+    distance: function(v)
+    {
+       var xx = this.x - v.x;
+       var yy = this.y - v.y;
+       return Math.sqrt(xx * xx + yy * yy); 
+    },
+    
+    theta: function()
+    {
+       return Math.atan2(this.y, this.x);
+    },
+    
+    thetaTo: function(vec)
+    {
+       // calc angle between the two vectors
+       var v = this.clone().norm();
+       var w = vec.clone().norm();
+       return Math.acos(v.dot(w));
+    },
+    
+    thetaTo2: function(vec)
+    {
+       return Math.atan2(vec.y, vec.x) - Math.atan2(this.y, this.x);
+    },
+    
+    norm: function()
+    {
+       var len = this.length();
+       this.x /= len;
+       this.y /= len;
+       return this;
+    },
+    
+    rotate: function(a)
+    {
+      var ca = Math.cos(a);
+      var sa = Math.sin(a);
+      with (this)
+      {
+        var rx = x*ca - y*sa;
+        var ry = x*sa + y*ca;
+        x = rx;
+        y = ry;
+      }
+      return this;
+    },
+    
+    invert: function()
+    {
+       this.x = -this.x;
+       this.y = -this.y;
+       return this;
+    },
+    
+    scale: function(s)
+    {
+       this.x *= s; 
+       this.y *= s;
+       return this;
+    }
+  }
+})();
+
+var canvas;
+var ctx;
+var stars = [];
+var CENTER_X;
+var CENTER_Y; 
+var WIDTH = 600;
+var HEIGHT = 600;
+var PLAYER_RADIUS = 20;
+var player;
+
+(function()
+{
+  Star = function(x,y) {
+    this.x = x;
+    this.y = y;
+    return this;
+  };
+  Star.prototype = {
+    START_VELOCITY: 0.5,
+    END_VELOCITY: 5.5,
+    MAX_Z: 8,
+    MIN_SIZE: 1,
+    MAX_SIZE: 2,
+    init: function() {
+      this.x = (Math.random() * WIDTH)%(WIDTH * 0.5) + (WIDTH * 0.25);
+      this.y = (Math.random() * HEIGHT)%(HEIGHT * 0.5) + (HEIGHT* 0.25);
+      this.prevx = this.x;
+      this.prevy = this.y;
+  
+      a = new Vector(this.x, this.y);
+      b = new Vector(CENTER_X, CENTER_Y);
+      distance = a.distance(b);
+  
+      xdist = this.x - CENTER_X;
+      ydist = this.y - CENTER_Y;
+      this.x_distance_ratio = xdist / distance;
+      this.y_distance_ratio = ydist / distance;
+      this.velocity = this.START_VELOCITY;
+      this.size = this.MIN_SIZE;
+    },
+    update: function() {
+      //console.log("update!");
+      this.prevx = this.x;
+      this.prevy = this.y;
+      if (this.velocity < this.END_VELOCITY) {
+        this.velocity += 0.04;
+      }
+      if (this.size < this.MAX_SIZE) {
+        this.size += 0.02;
+      }
+      this.x += this.velocity * this.x_distance_ratio;
+      this.y += this.velocity * this.y_distance_ratio;
+    },
+    render: function() {
+      //console.log("render!");
+      ctx.save();
+      ctx.beginPath();  
+      ctx.fillStyle = "rgb(255,255,255)";
+      ctx.arc(this.x, this.y, this.size, 0, TWOPI, true);
+      ctx.fill();
+      ctx.restore();
+    }
+  };
+})();
+var MAX_STARS = 25;
+
+(function()
+{
+  Player = function() {
+    return this;
+  };
+  Player.prototype = {
+    init: function() {
+      this.x = CENTER_X;
+      this.y = CENTER_Y;
+      this.prevx = this.x;
+      this.prevy = this.y;
+      this.velocity = this.new_velocity = 0.0;
+      this.inc_velocity = 1.0;
+      this.max_velocity = 7.0;
+      this.init_heading = this.rotation = this.heading = 0.0;
+    },
+    calc_vector_output: function(x, y, heading, vel) {
+      
+      x_dist = Math.cos(heading) * vel;
+      x += x_dist
+    
+      y_dist = Math.sin(heading) * vel;
+      y += y_dist;
+      
+      return [x, y];
+    },
+    sum_forces: function(force_a, force_b, angle) {
+      //console.log(force_a + " " + force_b + " " + angle);
+      return Math.sqrt(Math.pow(force_a,2)+Math.pow(force_b,2) + (2*force_a*force_b*Math.cos(angle)));
+    },
+    calc_new_heading: function(velocity, heading, new_velocity, rotation) {
+      return ((velocity*heading+new_velocity*rotation)/(velocity+new_velocity) % TWOPI);
+    },
+    calc_angle: function(angle1, angle2) {
+      angle1 = angle1 % TWOPI;
+      angle2 = angle2 % TWOPI;
+      angle = Math.sqrt(Math.pow(angle1 - angle2, 2));
+      return angle = angle % TWOPI;
+    },
+    update: function() {
+      momentum = this.calc_vector_output(this.x, this.y, this.heading, this.velocity);
+      mom_x = momentum[0];
+      mom_y = momentum[1];
+      //console.log( "" + this.velocity + " "+this.x+ " " + this.y + " " + mom_x + " " + mom_y);
+      
+      if (this.new_velocity > 0) { 
+        force = this.calc_vector_output(this.x, this.y, this.rotation, this.new_velocity);
+        force_x = force[0];
+        force_y = force[1];
+        //console.log(""+force_x + " " + force_y);
+      
+        this.x = Math.round(parseFloat(mom_x + force_x)/2);
+        this.y = Math.round(parseFloat(mom_y + force_y)/2);
+      } else {
+        this.x = mom_x;
+        this.y = mom_y;
+      }
+      
+      if (this.new_velocity > 0) {
+        old_heading = this.heading; 
+        this.rotation = this.rotation % TWOPI;
+        angle = this.calc_angle(this.heading, this.rotation);
+        
+        this.heading = this.calc_new_heading(this.velocity, this.heading, this.new_velocity, this.rotation);        
+        this.heading = this.heading % TWOPI;
+        console.log("curr:" + this.velocity + " new:" + this.new_velocity + " inc:" + 
+          this.inc_velocity + " old heading:" + old_heading + " rotation:" + this.rotation + 
+          "new heading: " + this.heading + " angle diff:" + angle);
+        
+        this.velocity = this.sum_forces(this.velocity, this.new_velocity, angle);
+        console.log("sum of forces: " + this.velocity);
+        
+        // limit velocity
+        if (this.velocity > this.max_velocity) {
+          this.velocity = this.max_velocity;
+        }
+        
+        console.log(this.velocity + " " + this.inc_velocity);
+        this.new_velocity = 0;
+      }
+      
+      // check for position out of bounds
+      min_reset_dimension = 0 - PLAYER_RADIUS;
+      max_x_reset_dimension = WIDTH + PLAYER_RADIUS;
+      max_y_reset_dimension = HEIGHT + PLAYER_RADIUS;
+      //console.log('x:'+this.x + 'y:'+this.y);
+      this.x = (this.x + max_x_reset_dimension) % max_x_reset_dimension;
+      this.y = (this.y + max_y_reset_dimension) % max_y_reset_dimension;
+      
+    },
+    render: function() {
+      //console.log("render!");
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rotation);
+      ctx.beginPath();  
+      ctx.fillStyle = "rgb(255,255,255)";
+      ctx.moveTo(10, 0);
+      ctx.lineTo(-7, -6);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(-7, 6);
+      ctx.fill();
+      ctx.restore();
+    },
+    onKeyHandler: function(keyCode)
+    {
+      switch (keyCode)
+      {
+        case KEY.LEFT:
+        {
+          this.rotation -= 15*RAD;
+          break;
+        }
+        case KEY.RIGHT:
+        {
+          this.rotation += 15*RAD;
+          break;
+        }
+        case KEY.UP:
+        {	
+          this.new_velocity = this.inc_velocity;
+          if (this.new_velocity > this.max_velocity) {
+            this.new_velocity = this.max_velocity;
+          }
+          break;
+        }
+      }
+      tick();
+    }
+  };
+})();
+
+function updateStarfield() {
+  while (stars.length < MAX_STARS) {
+    s = new Star();
+    s.init();
+    stars.push(s);
+  }
+    
+  // update locations of stars
+  var i =0;
+  while(i < stars.length) {
+    var s = stars[i];
+    //console.log(s);
+    if (s.prevx > WIDTH || s.prevx < 0 || s.prevy > HEIGHT || s.prevy < 0) {
+      s.init();
+    } else {
+      s.update();
+    }
+    s.render();
+    i++;
+  }
+}
+
+function drawTriangle(x, y, sideLength) {
+  ctx.fillStyle = "rgb(255,0,0)";
+  ctx.beginPath();  
+  halfLength = sideLength << 1
+  ctx.moveTo(x - halfLength, y + halfLength); 
+  ctx.lineTo(x, y - sideLength);  
+  ctx.lineTo(x + halfLength, y + halfLength);  
+  ctx.closePath();  
+  ctx.fill(); 
+}
+ 
+function tick() {
+  // reset the box
+  ctx.fillStyle = "rgb(0,0,0)";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  
+  player.update();
+  player.render();
+
+  //updateStarfield();
+}
+
+function init() {
+  canvas = document.getElementById('canvas');
+  ctx = canvas.getContext('2d');
+  
+  CENTER_X = canvas.width>> 1;
+  CENTER_Y = canvas.height>> 1;
+  
+  player = new Player();
+  player.init();
+  
+  $(document).keydown(function(e) {
+    //console.log("test" + e.which);
+    player.onKeyHandler(e.which);
+    //$('canvas').after("<p>"+player.heading+"</p>");
+  });
+  
+  /*ctx.fillStyle = "rgb(200,0,0)";  
+  ctx.fillRect (10, 10, 55, 50);  
+  
+  ctx.fillStyle = "rgba(0, 0, 200, 0.5)";  
+  ctx.fillRect (30, 30, 55, 50);  
+
+  ctx.beginPath();  
+  ctx.fillStyle = "rgba(0, 0, 300, 0.5)";  
+  endAngle = Math.PI*2;
+  ctx.arc(300, 300, 60, 0, endAngle, true);
+  ctx.fill();
+
+  ctx.fillStyle = "rgb(255,0,0)";
+  ctx.font = "18px";
+  ctx.fillText("Hello World", CENTER_X, CENTER_Y);*/
+
+  //drawTriangle(100, 120, 10);
+  /*i = 0;
+  while(i < 10) {
+    tick();
+    setInterval("console.log('tick!');", 3000);
+    i++;
+  }*/
+  g_interval = setInterval("tick();", 10);
+}
+
+// testing
+testing = true;
+if (testing) {
+  p = new Player();
+  p.init();
+  
+  var data = [
+    {expected: [0,1], x: 0, y: 0, heading: Math.PI/2, velocity: 1},
+    {expected: [-1,0], x: 0, y: 0, heading: Math.PI, velocity: 1},
+    {expected: [1,1], x: 0, y: 0, heading: Math.PI/4, velocity: 1},
+    {expected: [4,3], x: 0, y: 0, heading: Math.PI/6, velocity: 5},
+    {expected: [3,4], x: 0, y: 0, heading: Math.PI/3, velocity: 5},
+    {expected: [-4,4], x: 0, y: 0, heading: 3*Math.PI/4, velocity: 5},
+    {expected: [-4,4], x: 0, y: 0, heading: 3*Math.PI/4, velocity: 5},
+    {expected: [-5,-2], x: 0, y: 0, heading: (9*Math.PI)/8, velocity: 5},
+    {expected: [5,1], x: 0, y: 0, heading: 0.2617993877991494, velocity: 5}
+  ];
+  jQuery(data).each(function(i, row) {
+    new_x_y = p.calc_vector_output(row.x, row.y, row.heading, row.velocity);
+    console.log("new x y: " + new_x_y + "; expected: " + row.expected);
+  });
+  
+  var data = [
+    {expected: 5*Math.PI/8, velocity: 10, new_velocity: 10, heading: 0, rotation: 5*Math.PI/4},
+    {expected: Math.PI/2, velocity: 10, new_velocity: 10, heading: 0, rotation: Math.PI},
+    {expected: 1.0471975511965976, velocity: 20, new_velocity: 10, heading: 0, rotation: Math.PI}
+  ]
+  
+  jQuery(data).each(function(i, row) {
+    new_heading = p.calc_new_heading(row.velocity, row.heading, row.new_velocity, row.rotation);
+    console.log("new heading: " + new_heading + "; expected: " + row.expected);
+  });
+  
+  var data = [
+    {expected: 0, force_a: 10, force_b: 10, angle: Math.PI},
+    {expected: 14.142135623730951, force_a: 10, force_b: 10, angle: Math.PI/2},
+    {expected: 20, force_a: 10, force_b: 10, angle: 0}
+  ]
+  
+  jQuery(data).each(function(i, row) {
+    new_force = p.sum_forces(row.force_a, row.force_b, row.angle);
+    console.log("new force: " + new_force + "; expected: " + row.expected);
+  });
+  
+  var data = [{expected: 2.617993877991494, angle1: -1.832595714594046, angle2: 0.7853981633974478}];
+  jQuery(data).each(function(i, row) {
+    angle = p.calc_angle(row.angle1, row.angle2);
+    console.log("new angle: " + angle + "; expected: " + row.expected);
+  });
+}
+
+
+</script>
+
+</head>
+<body onload="init();">
+  <canvas id="canvas" width="600" height="600" style=""></canvas> 
+</body>
+</html>
