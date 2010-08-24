@@ -20,9 +20,11 @@
       ctx.save();
       //console.log(this.x, this.y, this.obj_radius);
       ctx.strokeStyle = "rgb(255,255,255)";  
+      ctx.fillStyle = "rgb(0,0,0)"; 
       ctx.beginPath();  
       ctx.arc(this.x, this.y, this.obj_radius, 0, TWOPI, true);
       ctx.closePath();  
+      ctx.fill();
       ctx.stroke();
       ctx.restore();
     }

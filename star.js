@@ -6,11 +6,11 @@
     return this;
   };
   Star.prototype = {
-    START_VELOCITY: 0.5,
-    END_VELOCITY: 5.5,
+    START_VELOCITY: 0.1,
+    END_VELOCITY: 1,
     MAX_Z: 8,
-    MIN_SIZE: 1,
-    MAX_SIZE: 2,
+    MIN_SIZE: 0.5,
+    MAX_SIZE: 1,
     init: function() {
       this.x = (Math.random() * WIDTH)%(WIDTH * 0.5) + (WIDTH * 0.25);
       this.y = (Math.random() * HEIGHT)%(HEIGHT * 0.5) + (HEIGHT* 0.25);

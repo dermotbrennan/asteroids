@@ -1,7 +1,7 @@
 Game = function() {
   this.levels = [
     (new Level(5, 0.25)), (new Level(7, 0.4)),
-    (new Level(10, 5)), (new Level(12, 6))
+    (new Level(10, 0.5)), (new Level(12, 0.6))
   ];
   
   this.current_level_num = 0;
@@ -72,6 +72,11 @@ Game.prototype = {
   isGameActive: function() {
     return (!this.isGameFinished && this.isGameStarted && !this.isGameOver);
   },
+  renderHud: function() {
+    ctx.fillStyle = "rgb(200,200,0)";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText("Level " + (this.current_level_num+1) + " :: Score " + this.player.score, CENTER_X-75, 20);
+  },
   startLevel: function(level_num) {
     this.current_level_num = level_num;
     this.current_level = this.levels[this.current_level_num];
@@ -98,17 +103,19 @@ Game.prototype = {
       return false;
     } else {   
       resetBox();
-      
+            
       if (this.current_level && this.current_level.inIntro()) {
         this.current_level.renderIntro();
         return false;
       }
+      
+      updateStarfield();
 
       // move and render the player
       this.player.update();
       this.player.render();
        
-      //console.log(bullets);
+      // figure out what the bullets are doing
       game = this;
       jQuery(this.player.bullets).each(function(i, bullet) {
         if (typeof(bullet) != 'undefined') {
@@ -123,13 +130,15 @@ Game.prototype = {
         }
       });
 
-      //console.log(asteroids);
+      // update/render asteroids
       jQuery(this.asteroids).each(function(i, asteroid) {
         if (typeof(asteroid) != 'undefined') {
           asteroid.update();
           asteroid.render();
         }
       });
+      
+      
       
       // bullet - asteroid collisions
       b_i = 0;
@@ -143,13 +152,14 @@ Game.prototype = {
             collisionOccured = true;
             this.asteroids.remove(a_i);
             this.player.bullets.remove(b_i);
+            this.player.scoreInc();
           }
           a_i++;
         }
         b_i++;
       }
       
-      //updateStarfield();
+      this.renderHud();      
       
       if (this.detectPlayerCollision()) {
         this.gameOver();

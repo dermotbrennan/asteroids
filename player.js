@@ -23,6 +23,10 @@
       this.init_heading = this.rotation = this.heading = 0.0;
     },
     
+    scoreInc: function() {
+      this.score += 150;
+    },
+    
     render: function() {
       //console.log("render!");
       ctx.save();
