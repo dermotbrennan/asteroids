@@ -19,6 +19,8 @@ background: #000;
 <script src="player.js" language="javascript" type="text/javascript"></script> 
 <script src="bullet.js" language="javascript" type="text/javascript"></script> 
 <script src="asteroid.js" language="javascript" type="text/javascript"></script> 
+<script src="level.js" language="javascript" type="text/javascript"></script> 
+<script src="game.js" language="javascript" type="text/javascript"></script> 
 <script>
 
 // some constants
@@ -26,22 +28,16 @@ var KEY = { SHIFT:16, CTRL:17, ESC:27, RIGHT:39, UP:38, LEFT:37, DOWN:40, SPACE:
             A:65, E:69, L:76, P:80, R:82, Z:90 };
 var RAD = Math.PI/180.0;
 var TWOPI = Math.PI*2;
-var MAX_STARS = 25;
+
 var canvas;
 var ctx;
-var stars = [];
-var bullets = [];
-var asteroids = [];
 var CENTER_X;
 var CENTER_Y; 
 var WIDTH = 600;
 var HEIGHT = 600;
-var PLAYER_RADIUS = 20;
-var NUM_ASTEROIDS = 6;
-var player;
-var paused = false;
-var isGameOver = false;
-var isGameFinished = false;
+var MAX_STARS = 25;
+var stars = [];
+var game;
 
 function resetBox() { 
   // reset the box
@@ -71,116 +67,6 @@ function updateStarfield() {
   }
 }
 
-function detectCollision(obj1, obj2) {
-  if (isNull(obj1) || isNull(obj2)) return false
-  v1 = new Vector(obj1.x, obj1.y);
-  v2 = new Vector(obj2.x, obj2.y);
-  sum_radiuses = obj1.obj_radius + obj2.obj_radius;
-  return (v1.distance(v2) < sum_radiuses);
-}
-
-function detectPlayerCollision() {
-  collisionOccurred = false;
-  i = 0;
-  while (i < asteroids.length && !collisionOccurred) {
-    collisionOccurred = detectCollision(player, asteroids[i]);
-    i++;
-  }
-  return collisionOccurred;
-}
-
-function writePausedText() {
-  ctx.fillStyle = "rgb(255,0,0)";
-  ctx.font = "22px";
-  ctx.fillText("Paused", CENTER_X-20, CENTER_Y-20);
-}
-
-function gameOver() {
-  isGameOver = true;
-  resetBox();
-  writeGameOverText();
-}
-
-function writeGameOverText() {
-  ctx.fillStyle = "rgb(255,0,0)";
-  ctx.font = "22px";
-  ctx.fillText("Game Over!", CENTER_X-20, CENTER_Y-20);
-}
-
-function gameFinished() {
-  isGameFinished = true;
-  resetBox();
-  writeGameFinishedText();
-}
-
-function writeGameFinishedText() {
-  ctx.fillStyle = "rgb(255,0,0)";
-  ctx.font = "22px";
-  ctx.fillText("You WIN!!!", CENTER_X-20, CENTER_Y-20);
-}
- 
-function tick() {
-  if (isGameOver || paused || isGameFinished) return false;
-
-  resetBox();
-
-  // move and render the player
-  player.update();
-  player.render();
-   
-  //console.log(bullets);
-  jQuery(bullets).each(function(i, bullet) {
-    if (typeof(bullet) != 'undefined') {
-      if (bullet.lifespan == 0) {
-        bullets.remove(i);
-      } else {
-        bullet.lifespan--;
-        bullets[i] = bullet;
-      }
-      bullet.update();
-      bullet.render();
-    }
-  });
-
-  //console.log(asteroids);
-  jQuery(asteroids).each(function(i, asteroid) {
-    if (typeof(asteroid) != 'undefined') {
-      asteroid.update();
-      asteroid.render();
-    }
-  });
-  
-  // bullet - asteroid collisions
-  b_i = 0;
-  while(bullets.length > 0 && b_i < bullets.length && asteroids.length > 0) {
-    bullet = bullets[b_i];
-    collisionOccured = false;
-    a_i = 0;
-    while(a_i < asteroids.length && !collisionOccured) { 
-      asteroid = asteroids[a_i];
-      if (detectCollision(asteroid, bullet)) {
-        collisionOccured = true;
-        asteroids.remove(a_i);
-        bullets.remove(b_i);
-      }
-      a_i++;
-    }
-    b_i++;
-  }
-  
-  //updateStarfield();
-  
-  if (detectPlayerCollision()) {
-    gameOver();
-  }
-  
-  if (asteroids.length == 0) {
-    gameFinished();
-  }
-  
-  return true;
-}
-
 function init() {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
@@ -188,34 +74,27 @@ function init() {
   CENTER_X = canvas.width>> 1;
   CENTER_Y = canvas.height>> 1;
   
-  for (var i = 0; i < NUM_ASTEROIDS; i++) {
-    a = new Asteroid();
-    a.init();
-    asteroids[i] = a;
-  }
-  
-  player = new Player();
-  player.init();
-  
+  game = new Game();
+    
   $(document).keydown(function(e) {
     //console.log("test" + e.which);
     switch (e.which)
     {
       case KEY.P:
       {	
-        paused = !paused
-        writePausedText();
+        game.paused = !game.paused;
+        if (game.paused) game.writePausedText();
         break;
       }
       default: 
       {
-        player.onKeyHandler(e.which);
+        game.onKeyHandler(e.which);
       }
     }
     //$('canvas').after("<p>"+player.heading+"</p>");
   });
   
-  g_interval = setInterval("tick();", 10);
+  g_interval = setInterval("game.tick();", 10);
 }
 
 </script>
@@ -224,7 +103,7 @@ function init() {
 </head>
 <body onload="init();">
   <h1>Asteroids</h1>
-  <p>HTML5 version of asteroids using the &gt;canvas&lt; element and Javascript</p>
+  <p>HTML5 version of asteroids using the &lt;canvas&gt; element and Javascript</p>
   <canvas id="canvas" width="600" height="600" style=""></canvas> 
   <h3>Controls</h3>
   <p>Arrow Keys to move</p>

@@ -58,3 +58,15 @@ function drawTriangle(x, y, sideLength) {
 function isNull(obj) {
   return (typeof(obj) == 'undefined');
 }
+
+function detectCollision(obj1, obj2) {
+  if (isNull(obj1) || isNull(obj2)) return false
+  v1 = new Vector(obj1.x, obj1.y);
+  v2 = new Vector(obj2.x, obj2.y);
+  sum_radiuses = obj1.obj_radius + obj2.obj_radius;
+  return (v1.distance(v2) < sum_radiuses);
+}
+
+function log(msg) {
+  if (window.console) console.log(msg);
+}

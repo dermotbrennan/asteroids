@@ -5,14 +5,21 @@
   };
   extend(Player, MovingObj, {
     init: function() {
+      this.resetPosition();
+      this.velocity = this.new_velocity = 0.0;
+      this.inc_velocity = 1.0;
+      this.max_velocity = 7.0;
+      this.obj_radius = 10;
+      this.score = 0;
+      this.bullets = [];
+    },
+    
+    resetPosition: function() {
       this.x = CENTER_X;
       this.y = CENTER_Y;
       this.prevx = this.x;
       this.prevy = this.y;
       this.velocity = this.new_velocity = 0.0;
-      this.inc_velocity = 1.0;
-      this.max_velocity = 7.0;
-      this.obj_radius = 10;
       this.init_heading = this.rotation = this.heading = 0.0;
     },
     
@@ -40,16 +47,19 @@
     },
     
     onKeyHandler: function(keyCode) {
+      player_moved = false;
       switch (keyCode)
       {
         case KEY.LEFT:
         {
           this.rotation -= 15*RAD;
+          player_moved = true;
           break;
         }
         case KEY.RIGHT:
         {
           this.rotation += 15*RAD;
+          player_moved = true;
           break;
         }
         case KEY.UP:
@@ -58,17 +68,19 @@
           if (this.new_velocity > this.max_velocity) {
             this.new_velocity = this.max_velocity;
           }
+          player_moved = true;
           break;
         }
         case KEY.SPACE:
         {	
           b = new Bullet()
           b.init(this.x, this.y, this.rotation);
-          bullets.push(b);
+          this.bullets.push(b);
+          player_moved = true;
           break;
         }
       }
-      tick();
+      return player_moved;
     }
   });
 })();
