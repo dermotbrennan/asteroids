@@ -20,7 +20,8 @@ Level.prototype = {
   },
   renderIntro: function() {
     ctx.fillStyle = "rgb(255,0,255)";
-    ctx.font = "22px";
-    ctx.fillText("Starting level " + (this.num+1) + " in... " + this.secsUntilStart(), CENTER_X-80, CENTER_Y-20);
+    ctx.font = "bold 22px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Starting level " + (this.num+1) + " in... " + this.secsUntilStart(), CENTER_X, CENTER_Y-20);
   }
 };

@@ -5,10 +5,12 @@ Game = function() {
   ];
   
   this.current_level_num = 0;
+  this.delayBetweenRestarts = 1500
   
   this.player = new Player();
   this.player.init();
   this.paused = false;
+  
   this.isGameStarted = false;
   this.isGameOver = false;
   this.isGameFinished = false;
@@ -27,9 +29,10 @@ Game.prototype = {
   drawIntro: function() {
     ctx.fillStyle = "rgb(255,0,0)";
     ctx.font = "bold 28px Arial";
-    ctx.fillText("ASTEROIDS", CENTER_X-80, CENTER_Y-20);
+    ctx.textAlign = "center";
+    ctx.fillText("ASTEROIDS", CENTER_X, CENTER_Y-20);
     ctx.font = "bold 16px Arial";
-    ctx.fillText("Press space to start", CENTER_X-75, CENTER_Y+20);
+    ctx.fillText("Press space to start", CENTER_X, CENTER_Y+20);
   },
   detectPlayerCollision: function() {
     collisionOccurred = false;
@@ -42,40 +45,62 @@ Game.prototype = {
   },
   writePausedText: function() {
     ctx.fillStyle = "rgb(255,0,0)";
-    ctx.font = "22px";
-    ctx.fillText("Paused", CENTER_X-40, CENTER_Y-20);
+    ctx.font = "bold 22px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Paused", CENTER_X, CENTER_Y-20);
   },
   gameOver: function() {
     this.isGameOver = true;
+    this.gameEndedAt = (new Date()).getTime();
     resetBox();
     this.writeGameOverText();
   },
   writeGameOverText: function() {
     ctx.fillStyle = "rgb(255,0,0)";
     ctx.font = "bold 28px Arial";
-    ctx.fillText("Game Over!", CENTER_X-75, CENTER_Y-20);
-    ctx.font = "bold 22px sans-serif";
-    ctx.fillText("Press space to restart", CENTER_X-100, CENTER_Y+20);
+    ctx.textAlign = "center";
+    ctx.fillText("Game Over!", CENTER_X, CENTER_Y-20);
+    this.printFinalScore();
   },
   gameFinished: function() {
     this.isGameFinished = true;
+    this.gameEndedAt = (new Date()).getTime();
     resetBox();
     this.writeGameFinishedText();
   },
   writeGameFinishedText: function() {
     ctx.fillStyle = "rgb(255,0,0)";
-    ctx.font = "bold 28px sans-serif";
-    ctx.fillText("You WIN!!!", CENTER_X-75, CENTER_Y-20);
-    ctx.font = "bold 22px sans-serif";
-    ctx.fillText("Press space to restart", CENTER_X-90, CENTER_Y+20);
+    ctx.font = "bold 28px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("You WIN!!!", CENTER_X, CENTER_Y-20);
+    this.printFinalScore();
   },  
   isGameActive: function() {
     return (!this.isGameFinished && this.isGameStarted && !this.isGameOver);
   },
   renderHud: function() {
     ctx.fillStyle = "rgb(200,200,0)";
-    ctx.font = "bold 14px sans-serif";
-    ctx.fillText("Level " + (this.current_level_num+1) + " :: Score " + this.player.score, CENTER_X-75, 20);
+    ctx.font = "bold 14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Level " + (this.current_level_num+1) + " :: Score " + this.player.score + 
+      " :: Asteroids left " + this.asteroids.length, 
+      CENTER_X, 20);
+  },
+  printRestartText: function() {
+    ctx.font = "normal 19px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Press space to restart", CENTER_X, CENTER_Y+60);
+  },
+  printFinalScore: function() {
+    ctx.font = "bold 16px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Your Score: " + this.player.score, CENTER_X, CENTER_Y+20);
+  },
+  gameJustEnded: function() {
+    return ((new Date()).getTime() < this.gameEndedAt+this.delayBetweenRestarts);
+  },
+  gameReadyToRestart: function() {
+    return (this.gameEndedAt && this.gameEndedAt > 0 && !this.gameJustEnded());
   },
   startLevel: function(level_num) {
     this.current_level_num = level_num;
@@ -100,6 +125,7 @@ Game.prototype = {
   tick: function() {
     if (this.paused) return false;
     if (!this.isGameActive()) {
+      if (this.gameReadyToRestart()) this.printRestartText();
       return false;
     } else {   
       resetBox();
@@ -139,7 +165,6 @@ Game.prototype = {
       });
       
       
-      
       // bullet - asteroid collisions
       b_i = 0;
       while (this.player.bullets.length > 0 && b_i < this.player.bullets.length && this.asteroids.length > 0) {
@@ -177,7 +202,7 @@ Game.prototype = {
     }
   }, 
   onKeyHandler: function(keyCode) {
-    if (this.isGameActive()) {
+    if (this.isGameActive() || this.gameJustEnded()) {
       //log("game is active");
       if (this.player.onKeyHandler(keyCode)) this.tick();
     } else {

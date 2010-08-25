@@ -5,8 +5,8 @@
   };
   extend(Asteroid, MovingObj, {
     init: function(min_asteroid_velocity) {
-      this.x = (Math.random() * (WIDTH * 0.55)) + (WIDTH * 0.45);
-      this.y = (Math.random() * (HEIGHT * 0.55)) + (HEIGHT* 0.45);
+      this.x = ((WIDTH * 0.75) + (Math.random() * (WIDTH * 0.5)))%WIDTH;	 
+      this.y = ((HEIGHT * 0.75) + (Math.random() * (HEIGHT * 0.5)))%HEIGHT;
       this.prevx = this.x;
       this.prevy = this.y;
       this.init_heading = this.rotation = this.heading = (Math.random()*TWOPI);
